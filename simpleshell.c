@@ -23,9 +23,9 @@ char** tokenize(char* line) {
     return tokens;
 }
 
-void changePrompt(const char* newPrompt) {
-    if (newPrompt != NULL) {
-        snprintf(prompt, sizeof(prompt), "%s", newPrompt);
+void change_prompt(const char* newprompt) {
+    if (newprompt != NULL) {
+        snprintf(prompt, sizeof(prompt), "%s", newprompt);
     }
 }
 
@@ -34,7 +34,7 @@ int execute(char** tokens) {
         return 1;
     } else if (strcmp(tokens[0], "prompt") == 0) {
         if (tokens[1] != NULL) {
-            changePrompt(tokens[1]);
+            change_prompt(tokens[1]);
         }
         return 1;
     } else if (strcmp(tokens[0], "pwd") == 0) {
@@ -58,7 +58,7 @@ int execute(char** tokens) {
         glob_t results;
         int stat = glob(tokens[0], GLOB_TILDE, NULL, &results);
         if (stat == 0) {
-            changePrompt(results.gl_pathv[0]);
+            change_prompt(results.gl_pathv[0]);
             globfree(&results);
         }
 
