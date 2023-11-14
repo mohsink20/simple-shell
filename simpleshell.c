@@ -60,56 +60,121 @@ int execute(char** tokens) {
         }
         return 1;
     } else {
-        glob_t results;
-        int stat = glob(tokens[0], GLOB_TILDE, NULL, &results);
-        if (stat == 0) {
-            change_prompt(results.gl_pathv[0]);
-            globfree(&results);
+        // Check for pipeline
+        int pipe_index = -1;
+        for (int i = 0; tokens[i] != NULL; i++) {
+            if (strcmp(tokens[i], "|") == 0) {
+                pipe_index = i;
+                break;
+            }
         }
 
-        pid_t pid = fork();
-        if (pid == 0) {
-            // Redirection
-            int fd_in = -1, fd_out = -1;
-            for (int i = 1; tokens[i] != NULL; i++) {
-                if (strcmp(tokens[i], "<") == 0) {
-                    fd_in = open(tokens[i + 1], O_RDONLY);
-                    if (fd_in < 0) {
-                        perror("open");
-                        exit(1);
-                    }
-                    dup2(fd_in, STDIN_FILENO);
-                    close(fd_in);
-                    tokens[i] = NULL;
-                    tokens[i + 1] = NULL;
-                } else if (strcmp(tokens[i], ">") == 0) {
-                    fd_out = open(tokens[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0666);
-                    if (fd_out < 0) {
-                        perror("open");
-                        exit(1);
-                    }
-                    dup2(fd_out, STDOUT_FILENO);
-                    close(fd_out);
-                    tokens[i] = NULL;
-                    tokens[i + 1] = NULL;
-                } else if (strcmp(tokens[i], "2>") == 0) {
-                    fd_out = open(tokens[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0666);
-                    if (fd_out < 0) {
-                        perror("open");
-                        exit(1);
-                    }
-                    dup2(fd_out, STDERR_FILENO);
-                    close(fd_out);
-                    tokens[i] = NULL;
-                    tokens[i + 1] = NULL;
-                }
+        if (pipe_index != -1) {
+            // Pipeline
+            char** first_command = tokens;
+            char** second_command = tokens + pipe_index + 1;
+            tokens[pipe_index] = NULL;
+
+            int pipe_fd[2];
+            if (pipe(pipe_fd) == -1) {
+                perror("pipe");
+                exit(1);
             }
 
-            execvp(tokens[0], tokens);
-            perror("execvp");
-            exit(1);
+            pid_t pid = fork();
+
+            if (pid == 0) {
+                // Child process (left side of the pipe)
+                close(pipe_fd[0]); // Close unused read end
+                dup2(pipe_fd[1], STDOUT_FILENO); // Redirect stdout to the write end of the pipe
+                close(pipe_fd[1]); // Close the write end of the pipe
+
+                // Execute the first command
+                execvp(first_command[0], first_command);
+                perror("execvp");
+                exit(1);
+            } else if (pid > 0) {
+                // Parent process
+                wait(NULL);
+                close(pipe_fd[1]); // Close the write end of the pipe
+
+                pid_t pid2 = fork();
+
+                if (pid2 == 0) {
+                    // Child process (right side of the pipe)
+                    close(pipe_fd[1]); // Close unused write end
+                    dup2(pipe_fd[0], STDIN_FILENO); // Redirect stdin to the read end of the pipe
+                    close(pipe_fd[0]); // Close the read end of the pipe
+
+                    // Execute the second command
+                    execvp(second_command[0], second_command);
+                    perror("execvp");
+                    exit(1);
+                } else if (pid2 > 0) {
+                    // Parent process
+                    close(pipe_fd[0]); // Close the read end of the pipe
+                    wait(NULL);
+                } else {
+                    perror("fork");
+                    exit(1);
+                }
+            } else {
+                perror("fork");
+                exit(1);
+            }
         } else {
-            wait(NULL);
+            // No pipeline
+            glob_t results;
+            int stat = glob(tokens[0], GLOB_TILDE, NULL, &results);
+            if (stat == 0) {
+                change_prompt(results.gl_pathv[0]);
+                globfree(&results);
+            }
+
+            pid_t pid = fork();
+            if (pid == 0) {
+                // Redirection
+                int fd_in = -1, fd_out = -1;
+                for (int i = 1; tokens[i] != NULL; i++) {
+                    if (strcmp(tokens[i], "<") == 0) {
+                        fd_in = open(tokens[i + 1], O_RDONLY);
+                        if (fd_in < 0) {
+                            perror("open");
+                            exit(1);
+                        }
+                        dup2(fd_in, STDIN_FILENO);
+                        close(fd_in);
+                        tokens[i] = NULL;
+                        tokens[i + 1] = NULL;
+                    } else if (strcmp(tokens[i], ">") == 0) {
+                        fd_out = open(tokens[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0666);
+                        if (fd_out < 0) {
+                            perror("open");
+                            exit(1);
+                        }
+                        dup2(fd_out, STDOUT_FILENO);
+                        close(fd_out);
+                        tokens[i] = NULL;
+                        tokens[i + 1] = NULL;
+                    } else if (strcmp(tokens[i], "2>") == 0) {
+                        fd_out = open(tokens[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0666);
+                        if (fd_out < 0) {
+                            perror("open");
+                            exit(1);
+                        }
+                        dup2(fd_out, STDERR_FILENO);
+                        close(fd_out);
+                        tokens[i] = NULL;
+                        tokens[i + 1] = NULL;
+                    }
+                }
+
+                execvp(tokens[0], tokens);
+                perror("execvp");
+                exit(1);
+            } else {
+                wait(NULL);
+            }
         }
     }
 
@@ -136,4 +201,3 @@ int main() {
 
     return 0;
 }
-
