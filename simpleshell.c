@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <glob.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 #define MAX_INPUT_SIZE 1024
 #define MAX_TOKENS 100
@@ -25,7 +26,11 @@ char** tokenize(char* line) {
 
 void change_prompt(const char* newprompt) {
     if (newprompt != NULL) {
-        snprintf(prompt, sizeof(prompt), "%s", newprompt);
+        if (strstr(newprompt, " ") != NULL) {
+            snprintf(prompt, sizeof(prompt), "%s", newprompt);
+        } else {
+            snprintf(prompt, sizeof(prompt), "%s", newprompt);
+        }
     }
 }
 
@@ -34,7 +39,7 @@ int execute(char** tokens) {
         return 1;
     } else if (strcmp(tokens[0], "prompt") == 0) {
         if (tokens[1] != NULL) {
-            change_prompt(tokens[1]);
+            change_prompt(strdup(tokens[1]));
         }
         return 1;
     } else if (strcmp(tokens[0], "pwd") == 0) {
@@ -64,6 +69,42 @@ int execute(char** tokens) {
 
         pid_t pid = fork();
         if (pid == 0) {
+            // Redirection
+            int fd_in = -1, fd_out = -1;
+            for (int i = 1; tokens[i] != NULL; i++) {
+                if (strcmp(tokens[i], "<") == 0) {
+                    fd_in = open(tokens[i + 1], O_RDONLY);
+                    if (fd_in < 0) {
+                        perror("open");
+                        exit(1);
+                    }
+                    dup2(fd_in, STDIN_FILENO);
+                    close(fd_in);
+                    tokens[i] = NULL;
+                    tokens[i + 1] = NULL;
+                } else if (strcmp(tokens[i], ">") == 0) {
+                    fd_out = open(tokens[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0666);
+                    if (fd_out < 0) {
+                        perror("open");
+                        exit(1);
+                    }
+                    dup2(fd_out, STDOUT_FILENO);
+                    close(fd_out);
+                    tokens[i] = NULL;
+                    tokens[i + 1] = NULL;
+                } else if (strcmp(tokens[i], "2>") == 0) {
+                    fd_out = open(tokens[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0666);
+                    if (fd_out < 0) {
+                        perror("open");
+                        exit(1);
+                    }
+                    dup2(fd_out, STDERR_FILENO);
+                    close(fd_out);
+                    tokens[i] = NULL;
+                    tokens[i + 1] = NULL;
+                }
+            }
+
             execvp(tokens[0], tokens);
             perror("execvp");
             exit(1);
@@ -95,3 +136,4 @@ int main() {
 
     return 0;
 }
+
