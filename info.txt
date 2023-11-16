@@ -7,8 +7,8 @@
 #                            Meow Shell v1.0                            #
 #          Meticulously Engineered, Open-source Wizardry Shell          #
 #                                                                       #
-#                     An interactive shell by:                          #
-#                    	 Khan && Yu Zheng                               #   
+#                  An interactive simple shell by:                      #
+#                     Mohsin Khan && Yu Zheng                           #   
 #                                                                       #  
 #           - Execute system commands and programs                      #
 #           - Connect commands with pipelines                           #
