@@ -9,7 +9,7 @@
 #define MAX_INPUT_SIZE 1024
 #define MAX_TOKENS 100
 
-char prompt[MAX_INPUT_SIZE] = "% ";
+char prompt[MAX_INPUT_SIZE] = "minishell😺$ ";
 
 char** tokenize(char* line) {
     char** tokens = malloc(MAX_TOKENS * sizeof(char*));
@@ -85,9 +85,9 @@ int execute(char** tokens) {
 
             if (pid == 0) {
                 // Child process (left side of the pipe)
-                close(pipe_fd[0]); // Close unused read end
-                dup2(pipe_fd[1], STDOUT_FILENO); // Redirect stdout to the write end of the pipe
-                close(pipe_fd[1]); // Close the write end of the pipe
+                close(pipe_fd[0]);
+                dup2(pipe_fd[1], STDOUT_FILENO);
+                close(pipe_fd[1]);
 
                 // Execute the first command
                 execvp(first_command[0], first_command);
@@ -96,15 +96,15 @@ int execute(char** tokens) {
             } else if (pid > 0) {
                 // Parent process
                 wait(NULL);
-                close(pipe_fd[1]); // Close the write end of the pipe
+                close(pipe_fd[1]);
 
                 pid_t pid2 = fork();
 
                 if (pid2 == 0) {
                     // Child process (right side of the pipe)
-                    close(pipe_fd[1]); // Close unused write end
-                    dup2(pipe_fd[0], STDIN_FILENO); // Redirect stdin to the read end of the pipe
-                    close(pipe_fd[0]); // Close the read end of the pipe
+                    close(pipe_fd[1]);
+                    dup2(pipe_fd[0], STDIN_FILENO);
+                    close(pipe_fd[0]);
 
                     // Execute the second command
                     execvp(second_command[0], second_command);
@@ -112,7 +112,7 @@ int execute(char** tokens) {
                     exit(1);
                 } else if (pid2 > 0) {
                     // Parent process
-                    close(pipe_fd[0]); // Close the read end of the pipe
+                    close(pipe_fd[0]);
                     wait(NULL);
                 } else {
                     perror("fork");
@@ -182,12 +182,21 @@ int execute(char** tokens) {
 }
 
 int main() {
-    while (1) {
+	FILE* fp = fopen("art.txt", "r");
+  char ch;
+  while((ch = fgetc(fp)) != EOF){
+    printf("%c", ch);
+  }
+  fclose(fp);
+
+  printf("\n");
+	while (1) {
         printf("%s", prompt);
 
-        char input[MAX_INPUT_SIZE];
-        fgets(input, MAX_INPUT_SIZE, stdin);
-
+	char input[MAX_INPUT_SIZE];
+  	if (!fgets(input, MAX_INPUT_SIZE, stdin)) {
+    		break;
+  	}
         char** tokens = tokenize(input);
 
         int status = execute(tokens);
@@ -198,6 +207,5 @@ int main() {
             continue;
         }
     }
-
     return 0;
 }
