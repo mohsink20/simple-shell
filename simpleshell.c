@@ -182,7 +182,7 @@ int execute(char** tokens) {
 }
 
 int main() {
-	FILE* fp = fopen("art.txt", "r");
+	FILE* fp = fopen("info.txt", "r");
   char ch;
   while((ch = fgetc(fp)) != EOF){
     printf("%c", ch);
