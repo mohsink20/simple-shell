@@ -9,7 +9,7 @@
 #define MAX_INPUT_SIZE 1024
 #define MAX_TOKENS 100
 
-char prompt[MAX_INPUT_SIZE] = "minishell😺$ ";
+char prompt[MAX_INPUT_SIZE] = "meowsh😺$ ";
 
 char** tokenize(char* line) {
     char** tokens = malloc(MAX_TOKENS * sizeof(char*));
