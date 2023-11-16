@@ -1,0 +1,20 @@
+ #######################################################################
+#                         |\      _,,,---,,_                            #  
+#                   ZZZzz /,`.-'`'    -.  ;-;;,_                        #
+#                        |,4-  ) )-,_. ,\ (  `'-'                       #
+#                       '---''(_/--'  `-'\_)                            #
+#                                                                       #  
+#                            Meow Shell v1.0                            #
+#          Meticulously Engineered, Open-source Wizardry Shell          #
+#                                                                       #
+#                     An interactive shell by:                          #
+#                    	 Khan && Yu Zheng                               #   
+#                                                                       #  
+#           - Execute system commands and programs                      #
+#           - Connect commands with pipelines                           #
+#           - Redirect input/output to files                            #
+#           - Change prompt with 'prompt' command                       #
+#           - Exit with 'exit'                                          #
+#                                                                       #
+ #######################################################################
+
