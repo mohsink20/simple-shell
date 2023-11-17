@@ -5,11 +5,27 @@
 #include <glob.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <signal.h>
 
 #define MAX_INPUT_SIZE 1024
 #define MAX_TOKENS 100
 
 char prompt[MAX_INPUT_SIZE] = "meowsh😺$ ";
+
+// Signal handler function for SIGTSTP (CTRL-Z)
+void sigtstp_handler(int signo) {
+    // Ignore the signal
+}
+
+// Signal handler function for SIGINT (CTRL-C)
+void sigint_handler(int signo) {
+    // Ignore the signal
+}
+
+// Signal handler function for SIGQUIT (CTRL-\)
+void sigquit_handler(int signo) {
+    // Ignore the signal
+}
 
 char** tokenize(char* line) {
     char** tokens = malloc(MAX_TOKENS * sizeof(char*));
@@ -37,6 +53,8 @@ void change_prompt(const char* newprompt) {
 int execute(char** tokens) {
     if (tokens[0] == NULL) {
         return 1;
+    } else if (strcmp(tokens[0], "exit") == 0) {
+        exit(0);
     } else if (strcmp(tokens[0], "prompt") == 0) {
         if (tokens[1] != NULL) {
             change_prompt(strdup(tokens[1]));
@@ -182,21 +200,28 @@ int execute(char** tokens) {
 }
 
 int main() {
-	FILE* fp = fopen("info.txt", "r");
-  char ch;
-  while((ch = fgetc(fp)) != EOF){
-    printf("%c", ch);
-  }
-  fclose(fp);
+    // Set up signal handlers to ignore signals
+    signal(SIGTSTP, sigtstp_handler);
+    signal(SIGINT, sigint_handler);
+    signal(SIGQUIT, sigquit_handler);
 
-  printf("\n");
-	while (1) {
+    FILE* fp = fopen("info.txt", "r");
+    char ch;
+    while ((ch = fgetc(fp)) != EOF) {
+        printf("%c", ch);
+    }
+    fclose(fp);
+
+    printf("\n");
+    while (1) {
         printf("%s", prompt);
 
-	char input[MAX_INPUT_SIZE];
-  	if (!fgets(input, MAX_INPUT_SIZE, stdin)) {
-    		break;
-  	}
+        char input[MAX_INPUT_SIZE];
+        if (!fgets(input, MAX_INPUT_SIZE, stdin)) {
+            printf("\n");
+            break;
+        }
+
         char** tokens = tokenize(input);
 
         int status = execute(tokens);
