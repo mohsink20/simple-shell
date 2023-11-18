@@ -14,17 +14,14 @@ char prompt[MAX_INPUT_SIZE] = "meowsh😺$ ";
 
 // Signal handler function for SIGTSTP (CTRL-Z)
 void sigtstp_handler(int signo) {
-    // Ignore the signal
 }
 
 // Signal handler function for SIGINT (CTRL-C)
 void sigint_handler(int signo) {
-    // Ignore the signal
 }
 
 // Signal handler function for SIGQUIT (CTRL-\)
 void sigquit_handler(int signo) {
-    // Ignore the signal
 }
 
 char** tokenize(char* line) {
