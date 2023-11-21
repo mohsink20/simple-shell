@@ -325,6 +325,7 @@ int execute(char** tokens) {
 
 
 int main() {
+
     rl_bind_key('\t', rl_complete);
     using_history();
 
@@ -361,7 +362,6 @@ int main() {
                 }
             }
 
-      
             add_to_history(input);
 
             char** tokens = tokenize(input);
