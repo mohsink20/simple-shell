@@ -8,6 +8,7 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <termios.h>
 
 #define MAX_INPUT_SIZE 1024
 #define MAX_TOKENS 100
@@ -15,7 +16,11 @@
 
 char prompt[MAX_INPUT_SIZE] = "meowsh😺$ ";
 
-char* history[MAX_HISTORY];
+typedef struct {
+    char* command;
+} HistoryEntry;
+
+HistoryEntry history[MAX_HISTORY];
 int history_count = 0;
 
 // Signal handler function for SIGTSTP (CTRL-Z)
@@ -52,68 +57,105 @@ void expand_wildcards(char** tokens) {
     }
     tokens[expanded_index] = NULL;
 }
+
+
 // Function to add a command to history
-void add_to_history(const char *command) {
+void add_to_history(char* const tokens[]) {
     if (history_count < MAX_HISTORY) {
-        history[history_count++] = strdup(command);
+        int total_length = 0;
+
+        // Calculate the total length of the command
+        for (int i = 0; tokens[i] != NULL; i++) {
+            total_length += strlen(tokens[i]) + 1; // +1 for space between tokens
+        }
+
+        // Allocate memory for the complete command
+        history[history_count].command = malloc(total_length);
+
+        // Concatenate tokens to form the complete command
+        strcpy(history[history_count].command, tokens[0]);
+        for (int i = 1; tokens[i] != NULL; i++) {
+            strcat(history[history_count].command, " ");
+            strcat(history[history_count].command, tokens[i]);
+        }
+
+        history_count++;
     } else {
-        free(history[0]);
+        free(history[0].command);
         for (int i = 0; i < MAX_HISTORY - 1; i++) {
             history[i] = history[i + 1];
         }
-        history[MAX_HISTORY - 1] = strdup(command);
+        int last_index = MAX_HISTORY - 1;
+        int total_length = 0;
+
+        // Calculate the total length of the command
+        for (int i = 0; history[last_index - 1].command[i] != '\0'; i++) {
+            total_length++;
+        }
+
+        // Allocate memory for the complete command
+        history[last_index].command = malloc(total_length);
+
+        // Copy the command from the previous history entry
+        strcpy(history[last_index].command, history[last_index - 1].command);
     }
 }
 
 // Function to print command history
 void print_history() {
     for (int i = 0; i < history_count; i++) {
-        printf("%d: %s\n", i + 1, history[i]);
+        printf("%d: %s\n", i + 1, history[i].command);
     }
 }
 
 // Function to get command from history by number
 char* get_command_from_history(int command_number) {
     if (command_number > 0 && command_number <= history_count) {
-        return strdup(history[command_number - 1]);
+        return strdup(history[command_number - 1].command);
     }
     return NULL;
 }
 
 // Function to handle command history recall
 char* handle_history_recall(char* input) {
-    int command_number = atoi(input + 1);
-    if (command_number > 0) {
-        char* recalled_command = get_command_from_history(command_number);
-        if (recalled_command != NULL) {
-            return recalled_command;
-        } else {
-            printf("Command not found in history\n");
-            return NULL;
-        }
-    } else if (strcmp(input, "!!") == 0) {
-        if (history_count > 0) {
-            return strdup(history[history_count - 1]);
-        } else {
-            printf("No command in history\n");
-            return NULL;
-        }
-    } else {
-        printf("Invalid history command\n");
+    if (history_count == 0) {
+        printf("No command in history\n");
         return NULL;
     }
+
+    if (input[0] == '!') {
+        int command_number = atoi(input + 1);
+        if (command_number > 0) {
+            char* recalled_command = get_command_from_history(command_number);
+            if (recalled_command != NULL) {
+                return recalled_command;
+            } else {
+                printf("Command not found in history\n");
+                return NULL;
+            }
+        } else if (strcmp(input, "!!") == 0) {
+            return strdup(history[history_count - 1].command);
+        } else {
+            printf("Invalid history command\n");
+            return NULL;
+        }
+    }
+
+    return NULL;
 }
 
 char** tokenize(char* line) {
+    char* copy = strdup(line);  // Create a copy of the input line
     char** tokens = malloc(MAX_TOKENS * sizeof(char*));
-    char* token = strtok(line, " \n");
+    char* token = strtok(copy, " \n");
     int i = 0;
     while (token != NULL) {
-        tokens[i] = token;
+        tokens[i] = strdup(token);
         i++;
         token = strtok(NULL, " \n");
     }
     tokens[i] = NULL;
+    free(copy);  // Free the copied line
     return tokens;
 }
 
@@ -150,6 +192,9 @@ int execute(char** tokens) {
             }
         }
         return 1;
+    } else if (strcmp(tokens[0], "history") == 0) {
+        print_history();
+        return 1;
     } else {
         int background = 0;
         int sequential = 0;
@@ -176,33 +221,15 @@ int execute(char** tokens) {
         }
         expand_wildcards(tokens);
 
-         if (tokens[0][0] == '!') {
-            int command_number = atoi(tokens[0] + 1);
-            if (command_number > 0) {
-                char* recalled_command = get_command_from_history(command_number);
-                if (recalled_command != NULL) {
-                    tokens = tokenize(recalled_command);
-                    free(recalled_command);
-                } else {
-                    printf("Command not found in history\n");
-                    return 1;
-                }
-            } else if (strcmp(tokens[0], "!!") == 0) {
-                if (history_count > 0) {
-                    char* last_command = strdup(history[history_count - 1]);
-                    tokens = tokenize(last_command);
-                    free(last_command);
-                } else {
-                    printf("No command in history\n");
-                    return 1;
-                }
-            } else {
-                printf("Invalid history command\n");
-                return 1;
-            }
-        }
-
-        add_to_history(tokens[0]);
+        char* recalled_command = handle_history_recall(tokens[0]);
+if (recalled_command != NULL) {
+    char** recalled_tokens = tokenize(recalled_command);
+    add_to_history(recalled_tokens);
+    tokens = recalled_tokens;
+    free(recalled_command);
+} else {
+    add_to_history(tokens);
+}
 
 
         if (pipe_index != -1) {
@@ -227,7 +254,6 @@ int execute(char** tokens) {
                 perror("execvp");
                 exit(1);
             } else if (pid > 0) {
-                wait(NULL);
                 close(pipe_fd[1]);
 
                 pid_t pid2 = fork();
@@ -300,21 +326,17 @@ int execute(char** tokens) {
                 perror("execvp");
                 exit(1);
             } else {
-                if (!background && !sequential) {
+                if (background) {
+                    // Child process will run in the background
+                    printf("[%d] %d\n", getpid(), pid);
+                } else {
+                    // Parent process waits for the foreground process
                     waitpid(pid, NULL, 0);
-                } else if (background) {
-                    pid_t shell_pid = getpid();
-                    if (pid != 0) {
-                  
-                        freopen("/dev/null", "w", stdout);
-                        freopen("/dev/null", "w", stderr);
-                        printf("[%d] %d\n", shell_pid, pid);
-                    }
-                } else if (sequential) {
-                    waitpid(pid, NULL, 0);
-                    if (tokens[i + 1] != NULL) {
-                        execute(tokens + i + 1); // Execute the command after ;
-                    }
+                }
+
+                if (sequential && tokens[i + 1] != NULL) {
+                    // Execute the command after ;
+                    execute(tokens + i + 1);
                 }
             }
         }
@@ -323,8 +345,8 @@ int execute(char** tokens) {
     return 0;
 }
 
-
 int main() {
+    rl_initialize();  // Initialize readline
 
     rl_bind_key('\t', rl_complete);
     using_history();
@@ -332,6 +354,9 @@ int main() {
     signal(SIGTSTP, sigtstp_handler);
     signal(SIGINT, sigint_handler);
     signal(SIGQUIT, sigquit_handler);
+
+    struct termios original_termios;
+    tcgetattr(STDIN_FILENO, &original_termios);
 
     FILE* fp = fopen("info.txt", "r");
     char ch;
@@ -350,23 +375,9 @@ int main() {
         }
 
         if (input && *input) {
-        
-            if (input[0] == '!') {
-                char* recalled_command = handle_history_recall(input);
-                if (recalled_command != NULL) {
-                    free(input);
-                    input = recalled_command;
-                } else {
-                    free(input);
-                    continue; 
-                }
-            }
-
-            add_to_history(input);
-
+            add_to_history(tokenize(input));
             char** tokens = tokenize(input);
 
-            
             expand_wildcards(tokens);
 
             int status = execute(tokens);
@@ -376,16 +387,18 @@ int main() {
                 free(tokens[i]);
             }
             free(tokens);
+
+            // Reset the terminal to a standard state
+            tcsetattr(STDIN_FILENO, TCSANOW, &original_termios);
         }
+
+        add_history(input);  // Add command to history
 
         free(input);
     }
 
     clear_history();
 
-    for (int i = 0; i < history_count; i++) {
-        free(history[i]);
-    }
-
     return 0;
 }
+
