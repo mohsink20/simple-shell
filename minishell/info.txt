@@ -1,8 +1,4 @@
  #######################################################################
-#                         |\      _,,,---,,_                            #  
-#                   ZZZzz /,`.-'`'    -.  ;-;;,_                        #
-#                        |,4-  ) )-,_. ,\ (  `'-'                       #
-#                       '---''(_/--'  `-'\_)                            #
 #                                                                       #  
 #                            Meow Shell v1.0                            #
 #          Meticulously Engineered, Open-source Wizardry Shell          #
@@ -10,11 +6,20 @@
 #                  An interactive simple shell by:                      #
 #                     Mohsin Khan && Yu Zheng                           #   
 #                                                                       #  
-#           - Execute system commands and programs                      #
-#           - Connect commands with pipelines                           #
-#           - Redirect input/output to files                            #
-#           - Change prompt with 'prompt' command                       #
-#           - Exit with 'exit'                                          #
+#           		     Features:                                  #
+#                  - Execute commands and programs                      #
+#                  - Pipe commands                                      #
+#                  - Redirect I/O                                       #
+#                  - Change prompt (e.g., % prompt john$)               #
+#                  - Exit gracefully (with 'exit')                      #
+#                  - Wildcard support for filenames                     #
+#                  - Background and sequential execution                #
+#                  - Command history navigation                         #
+#                  - No premature termination                           #
+#                                                                       #
+#                               Bugs:                                   # 
+#           - Report bugs at github.com/mohsink20/simple-shell          #
+#                                                                       #
 #                                                                       #
  #######################################################################
 
